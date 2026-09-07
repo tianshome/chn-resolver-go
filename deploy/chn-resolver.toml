@@ -1,0 +1,67 @@
+# chn-resolver configuration
+#
+# China/foreign split-horizon DNS resolver. A/AAAA queries are fanned out
+# to all upstreams and answered with the China-prefix selection policy;
+# everything else is relayed to the upstreams in order.
+
+# Listener. bind = "" or "::" serves both address families.
+bind = "127.0.0.1"
+port = 8053
+udp = true
+tcp = true
+# Idle time before a stalled TCP client connection is closed.
+tcp_idle_timeout = "30s"
+# Upper bound on concurrently served queries/connections; UDP queries
+# beyond it are dropped (clients retry), TCP connections are closed.
+max_concurrency = 512
+
+[[upstream]]
+addr = "202.96.209.133"   # China Telecom (Shenzhen)
+port = 53
+# role: "auto" classifies the server IP against the prefix list (the
+# Python behavior); "china"/"foreign" forces a class.
+role = "auto"
+[[upstream]]
+addr = "8.8.8.8"          # Google public DNS
+port = 53
+role = "auto"
+
+[china]
+# IP2Location "China" firewall list, combined v4+v6. The split files
+# chn_prefixes_v4.txt / chn_prefixes_v6.txt are also accepted.
+# NOTE: /home/ubuntu/chnroute.txt is a DIFFERENT, v4-only dataset — do not
+# substitute it (see assets/README.md).
+prefix_files = ["/home/ubuntu/multiresolver/assets/chn_prefixes.txt"]
+overrides_file = "/home/ubuntu/multiresolver/assets/override_domains.txt"
+
+[resolve]
+# Per-query deadline and per-upstream attempt budget. A stuck upstream
+# costs ~attempt_timeout, never the whole query.
+overall_timeout = "2.5s"
+attempt_timeout = "1.5s"
+max_cname_hops = 10
+# Outbound EDNS0 UDP payload size.
+udp_payload_size = 1232
+# Serving TTL clamps (positive and negative).
+min_ttl = "30s"
+max_ttl = "3600s"
+neg_min_ttl = "60s"
+neg_max_ttl = "600s"
+
+[cache]
+enabled = true
+max_entries = 65536
+sweep_interval = "30s"
+
+[forward]
+# Per-attempt budget for relayed (non-A/AAAA) queries.
+timeout = "2.5s"
+
+[log]
+level = "info"   # debug | info | warn | error
+format = "text"  # text | json
+
+[metrics]
+# Omit this section to disable. Prometheus text format on /metrics.
+# 8054 is taken by geodns on this host.
+listen = "127.0.0.1:8055"

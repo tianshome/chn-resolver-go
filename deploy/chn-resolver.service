@@ -1,0 +1,31 @@
+[Unit]
+Description=chn-resolver split-horizon DNS resolver (UDP+TCP 127.0.0.1:8053)
+Documentation=file:///home/ubuntu/chn-resolver/README.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+ExecStart=/usr/local/bin/chn-resolver -config /etc/chn-resolver/chn-resolver.toml
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=on-failure
+RestartSec=2
+TimeoutStopSec=10
+LimitNOFILE=65536
+
+# Hardening: this service only needs UDP/TCP sockets and file reads.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+CapabilityBoundingSet=
+LockPersonality=true
+MemoryDenyWriteExecute=true
+
+[Install]
+WantedBy=multi-user.target
